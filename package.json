@@ -1,0 +1,64 @@
+{
+  "name": "backend",
+  "version": "1.0.0",
+  "description": "Payload CMS backend for the Rajasthan jewelry commerce application",
+  "private": true,
+  "packageManager": "pnpm@10.34.6",
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "build": "cross-env NODE_OPTIONS=\"--no-deprecation --max-old-space-size=8000\" next build",
+    "dev": "cross-env NODE_OPTIONS=--no-deprecation next dev",
+    "generate:importmap": "cross-env NODE_OPTIONS=--no-deprecation payload generate:importmap",
+    "generate:types": "cross-env NODE_OPTIONS=--no-deprecation payload generate:types",
+    "lint": "cross-env NODE_OPTIONS=--no-deprecation eslint .",
+    "format": "prettier --write \"src/**/*.{ts,tsx,scss}\" \"tests/**/*.ts\" \"*.{json,mjs,ts}\"",
+    "format:check": "prettier --check \"src/**/*.{ts,tsx,scss}\" \"tests/**/*.ts\" \"*.{json,mjs,ts}\"",
+    "payload": "cross-env NODE_OPTIONS=--no-deprecation payload",
+    "migrate": "cross-env NODE_OPTIONS=--no-deprecation payload migrate",
+    "migrate:create": "cross-env NODE_OPTIONS=--no-deprecation payload migrate:create",
+    "migrate:status": "cross-env NODE_OPTIONS=--no-deprecation payload migrate:status",
+    "seed": "cross-env NODE_OPTIONS=--no-deprecation tsx src/seed/index.ts",
+    "start": "cross-env NODE_OPTIONS=--no-deprecation next start",
+    "test": "cross-env NODE_OPTIONS=--no-deprecation vitest run --config ./vitest.config.mts",
+    "typecheck": "tsc --noEmit",
+    "test:e2e": "cross-env NODE_OPTIONS=--no-deprecation vitest run --config ./vitest.e2e.config.mts",
+    "create-admin": "cross-env NODE_OPTIONS=--no-deprecation tsx src/scripts/create-admin.ts"
+  },
+  "dependencies": {
+    "@payloadcms/db-postgres": "3.90.2",
+    "@payloadcms/next": "3.90.2",
+    "@payloadcms/richtext-lexical": "3.90.2",
+    "@payloadcms/ui": "3.90.2",
+    "cross-env": "^7.0.3",
+    "dotenv": "16.4.7",
+    "graphql": "^16.8.1",
+    "next": "16.3.3",
+    "payload": "3.90.2",
+    "react": "19.2.6",
+    "react-dom": "19.2.6",
+    "sharp": "0.35.4"
+  },
+  "devDependencies": {
+    "@types/node": "22.19.9",
+    "@types/react": "19.2.14",
+    "@types/react-dom": "19.2.3",
+    "eslint": "^9.16.0",
+    "eslint-config-next": "16.3.3",
+    "prettier": "^3.4.2",
+    "tsx": "4.23.15",
+    "typescript": "5.7.3",
+    "vite-tsconfig-paths": "6.0.5",
+    "vitest": "4.0.18"
+  },
+  "engines": {
+    "node": ">=20.9.0",
+    "pnpm": "^9 || ^10 || ^11"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild",
+      "unrs-resolver"
+    ]
+  }
+}

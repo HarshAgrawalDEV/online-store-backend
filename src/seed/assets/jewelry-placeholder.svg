@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="1200" viewBox="0 0 1200 1200">
+  <defs>
+    <radialGradient id="background" cx="50%" cy="42%" r="72%">
+      <stop offset="0" stop-color="#fff8df"/>
+      <stop offset="1" stop-color="#ead2a0"/>
+    </radialGradient>
+    <linearGradient id="gold" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#fff0a8"/>
+      <stop offset="0.45" stop-color="#c79022"/>
+      <stop offset="1" stop-color="#7b4a08"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="1200" fill="url(#background)"/>
+  <circle cx="600" cy="560" r="320" fill="none" stroke="url(#gold)" stroke-width="48"/>
+  <circle cx="600" cy="560" r="235" fill="none" stroke="#9c1f39" stroke-width="24" stroke-dasharray="18 34"/>
+  <path d="M600 170 660 300 600 390 540 300Z" fill="#9c1f39" stroke="#c79022" stroke-width="18"/>
+  <circle cx="600" cy="920" r="58" fill="#9c1f39" stroke="#c79022" stroke-width="22"/>
+  <text x="600" y="1080" text-anchor="middle" font-family="Georgia, serif" font-size="54" fill="#6d3c12">Rajasthan Jewelry</text>
+</svg>
