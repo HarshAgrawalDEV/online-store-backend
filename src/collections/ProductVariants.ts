@@ -1,7 +1,11 @@
 import type { CollectionConfig } from 'payload'
 
 import { canManageCatalog, canReadCostField, readActiveVariants } from '../access/catalog'
-import { normalizeVariant, preventDeletingLastActiveVariant } from '../hooks/variants'
+import {
+  normalizeVariant,
+  preventDeletingLastActiveVariant,
+  prepareVariant,
+} from '../hooks/variants'
 import {
   validateOptionalNonNegativeInteger,
   validateRequiredNonNegativeInteger,
@@ -11,7 +15,7 @@ export const ProductVariants: CollectionConfig = {
   slug: 'product-variants',
   admin: {
     group: 'Catalog',
-    defaultColumns: ['sku', 'product', 'sizeCode', 'colorCode', 'pricePaise', 'status'],
+    defaultColumns: ['sku', 'product', 'sizeLabel', 'colourLabel', 'pricePaise', 'status'],
     useAsTitle: 'sku',
   },
   access: {
@@ -25,6 +29,7 @@ export const ProductVariants: CollectionConfig = {
     { fields: ['product', 'status'] },
   ],
   hooks: {
+    beforeValidate: [prepareVariant],
     beforeChange: [normalizeVariant],
     beforeDelete: [preventDeletingLastActiveVariant],
   },
@@ -36,37 +41,54 @@ export const ProductVariants: CollectionConfig = {
       required: true,
       index: true,
     },
-    { name: 'sku', type: 'text', required: true, unique: true, index: true, maxLength: 80 },
-    { name: 'optionSignature', type: 'text', required: true, admin: { readOnly: true } },
-    { name: 'sizeCode', type: 'text', maxLength: 40 },
-    { name: 'colorCode', type: 'text', index: true, maxLength: 60 },
-    { name: 'finishCode', type: 'text', maxLength: 60 },
     {
-      name: 'optionValues',
-      type: 'array',
-      fields: [
-        {
-          name: 'attribute',
-          type: 'relationship',
-          relationTo: 'catalog-attribute-definitions',
-          required: true,
-        },
-        {
-          name: 'option',
-          type: 'relationship',
-          relationTo: 'catalog-attribute-options',
-          required: true,
-          filterOptions: ({ siblingData }) => ({
-            attribute: {
-              equals:
-                typeof siblingData === 'object' && siblingData && 'attribute' in siblingData
-                  ? siblingData.attribute
-                  : undefined,
-            },
-          }),
-        },
-      ],
+      name: 'sku',
+      type: 'text',
+      required: true,
+      unique: true,
+      index: true,
+      maxLength: 80,
+      admin: { description: 'Leave empty to generate one, for example GLS-BNG12-014-TEAL-24.' },
     },
+    { name: 'optionSignature', type: 'text', required: true, admin: { readOnly: true } },
+    {
+      name: 'size',
+      type: 'relationship',
+      relationTo: 'sizes',
+      index: true,
+      admin: { description: 'Choose from the size list.' },
+    },
+    {
+      name: 'colour',
+      type: 'relationship',
+      relationTo: 'colours',
+      index: true,
+      admin: { description: 'Choose from the shared colour library.' },
+    },
+    {
+      name: 'customColourName',
+      type: 'text',
+      maxLength: 60,
+      admin: {
+        description:
+          'A one-off colour that is not in the library. It shows on this product only until it is saved to the library.',
+        condition: (data) => !data?.colour,
+      },
+    },
+    {
+      name: 'saveToColourLibrary',
+      type: 'checkbox',
+      defaultValue: false,
+      admin: {
+        description: 'Tick and save to add the custom colour to the library for every product.',
+        condition: (data) => !data?.colour && Boolean(data?.customColourName),
+      },
+    },
+    { name: 'sizeCode', type: 'text', maxLength: 40, admin: { readOnly: true } },
+    { name: 'sizeLabel', type: 'text', maxLength: 40, admin: { readOnly: true } },
+    { name: 'colorCode', type: 'text', index: true, maxLength: 60, admin: { readOnly: true } },
+    { name: 'colourLabel', type: 'text', maxLength: 80, admin: { readOnly: true } },
+    { name: 'finishCode', type: 'text', maxLength: 60 },
     {
       name: 'pricePaise',
       type: 'number',

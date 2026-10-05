@@ -140,6 +140,7 @@ export const getOrderDetails = async (req: PayloadRequest, order: Order) => {
       productNameSnapshot: item.productNameSnapshot,
       sizeSnapshot: item.sizeSnapshot ?? null,
       colorSnapshot: item.colorSnapshot ?? null,
+      descriptionSnapshot: item.descriptionSnapshot ?? null,
       imageUrlSnapshot: item.imageUrlSnapshot ?? null,
       quantity: item.quantity,
       unitPricePaise: item.unitPricePaise,
@@ -339,6 +340,7 @@ export const placeOrder = async (req: PayloadRequest, input: unknown) => {
         const discount = discounts[index]
         const itemData: RequiredDataFromCollectionSlug<'order-items'> = {
           colorSnapshot: line.variant.colorCode ?? undefined,
+          descriptionSnapshot: line.variant.description?.slice(0, 300) || undefined,
           imageUrlSnapshot: line.product.imageUrl ?? undefined,
           lineDiscountPaise: discount,
           lineSubtotalPaise: line.lineTotalPaise,

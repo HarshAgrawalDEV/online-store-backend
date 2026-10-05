@@ -5,15 +5,7 @@ import { fileURLToPath } from 'node:url'
 import { getPayload, type CollectionSlug, type Payload } from 'payload'
 
 import config from '../payload.config'
-import type {
-  CatalogAttributeDefinition,
-  CatalogAttributeOption,
-  Category,
-  Collection as CuratedCollection,
-  Media,
-  Product,
-  ProductVariant,
-} from '../payload-types'
+import type { Category, Collection as CuratedCollection, Media, Product } from '../payload-types'
 
 const findBy = async (
   payload: Payload,
@@ -31,11 +23,22 @@ const findBy = async (
 
 const ensureCategory = async (
   payload: Payload,
-  data: { description: string; name: string; parent?: number; slug: string; sortOrder: number },
+  data: {
+    department?: 'bangles' | 'jewellery'
+    description: string
+    name: string
+    parent?: number
+    skuCode?: string
+    slug: string
+    sortOrder: number
+  },
 ): Promise<Category> => {
   const existing = await findBy(payload, 'categories', 'slug', data.slug)
   if (existing.docs[0]) return existing.docs[0] as Category
-  return payload.create({ collection: 'categories', data: { ...data, isActive: true } })
+  return payload.create({
+    collection: 'categories',
+    data: { department: 'bangles', ...data, isActive: true },
+  })
 }
 
 const ensureCollection = async (
@@ -62,35 +65,30 @@ const ensureCollection = async (
   })
 }
 
-const ensureAttributeDefinition = async (
-  payload: Payload,
-  data: { code: string; name: string; sortOrder: number },
-): Promise<CatalogAttributeDefinition> => {
-  const existing = await findBy(payload, 'catalog-attribute-definitions', 'code', data.code)
-  if (existing.docs[0]) return existing.docs[0] as CatalogAttributeDefinition
-  return payload.create({
-    collection: 'catalog-attribute-definitions',
-    data: { ...data, filterable: true, scope: 'variant', valueType: 'select' },
-  })
-}
+type LibraryCollection =
+  | 'colours'
+  | 'finishes'
+  | 'jewellery-styles'
+  | 'materials'
+  | 'occasions'
+  | 'piece-types'
+  | 'sizes'
+  | 'stone-types'
 
-const ensureAttributeOption = async (
+/** Creates a library entry the first time; later runs leave staff edits alone. */
+const ensureLibrary = async (
   payload: Payload,
-  attribute: number,
-  data: { code: string; label: string; sortOrder: number; swatchHex?: string },
-): Promise<CatalogAttributeOption> => {
-  const existing = await payload.find({
-    collection: 'catalog-attribute-options',
-    depth: 0,
-    limit: 1,
+  collection: LibraryCollection,
+  field: string,
+  data: Record<string, unknown>,
+): Promise<{ id: number }> => {
+  const existing = await findBy(payload, collection, field, data[field])
+  if (existing.docs[0]) return existing.docs[0] as { id: number }
+  return (await payload.create({
+    collection,
+    data: { isActive: true, ...data } as never,
     overrideAccess: true,
-    where: { and: [{ attribute: { equals: attribute } }, { code: { equals: data.code } }] },
-  })
-  if (existing.docs[0]) return existing.docs[0] as CatalogAttributeOption
-  return payload.create({
-    collection: 'catalog-attribute-options',
-    data: { ...data, attribute, isActive: true },
-  })
+  })) as { id: number }
 }
 
 const ensureMedia = async (payload: Payload): Promise<Media> => {
@@ -109,136 +107,494 @@ const ensureMedia = async (payload: Payload): Promise<Media> => {
   })
 }
 
+type SeedVariantGroup = {
+  colours: string[]
+  /** Price per size code, in paise. */
+  prices: Record<string, number>
+  stock: number
+}
+
 type SeedProduct = {
   category: string
   collections: string[]
-  colorCode: string
-  material: string
+  material: 'boor' | 'glass' | 'lakh' | 'seep'
   name: string
-  occasion: 'everyday' | 'festive' | 'gifting' | 'wedding'
-  plating: string
-  pricePaise: number
-  sku: string
+  occasions: string[]
+  piecesTotal: number
+  kadaCount: number
+  productType: 'bangle_set' | 'chuda_set' | 'complete_set' | 'kada_pair'
   slug: string
-  stoneType: string
-  stock: number
+  shortDescription: string
+  variants: SeedVariantGroup
 }
 
 const productSeeds: SeedProduct[] = [
   {
     category: 'bangles',
     collections: ['bridal-bangles', 'wedding-guest'],
-    colorCode: 'ruby-red',
-    material: 'Brass',
-    name: 'Rajputana Ruby Bridal Bangles',
-    occasion: 'wedding',
-    plating: 'Antique Gold',
-    pricePaise: 349900,
-    sku: 'RJ-BNG-RUBY-24',
-    slug: 'rajputana-ruby-bridal-bangles',
-    stoneType: 'Kundan and imitation ruby',
-    stock: 18,
+    kadaCount: 0,
+    material: 'glass',
+    name: 'Teal Sparkle Glass Bangle Set',
+    occasions: ['wedding-season', 'teej', 'daily-wear'],
+    piecesTotal: 12,
+    productType: 'bangle_set',
+    shortDescription: 'Twelve glass bangles, six for each hand, with a sparkling finish.',
+    slug: 'teal-sparkle-glass-bangle-set',
+    variants: {
+      colours: ['teal', 'rani'],
+      prices: { '2-4': 39900, '2-6': 39900, '2-8': 42900 },
+      stock: 12,
+    },
   },
   {
-    category: 'jhumkas',
-    collections: ['jaipur-edit', 'festive-jewelry'],
-    colorCode: 'emerald-green',
-    material: 'Brass',
-    name: 'Jaipur Meenakari Jhumkas',
-    occasion: 'festive',
-    plating: '22K Gold Tone',
+    category: 'kadas',
+    collections: ['festive-jewelry', 'jaipur-edit'],
+    kadaCount: 2,
+    material: 'lakh',
+    name: 'Red Green Lakh Kada Pair',
+    occasions: ['teej', 'gangaur', 'karwa-chauth'],
+    piecesTotal: 2,
+    productType: 'kada_pair',
+    shortDescription: 'A pair of handmade lakh kadas, one for each hand.',
+    slug: 'red-green-lakh-kada-pair',
+    variants: {
+      colours: ['red-green', 'multicolour'],
+      prices: { '2-4': 79900, '2-6': 79900, '2-8': 84900 },
+      stock: 8,
+    },
+  },
+  {
+    category: 'complete-sets',
+    collections: ['bridal-bangles', 'wedding-guest'],
+    kadaCount: 2,
+    material: 'glass',
+    name: 'Maroon Glass Complete Set',
+    occasions: ['wedding-season', 'karwa-chauth'],
+    piecesTotal: 6,
+    productType: 'complete_set',
+    shortDescription: 'Two kadas and four bangles, made to be worn together.',
+    slug: 'maroon-glass-complete-set',
+    variants: {
+      colours: ['maroon', 'red'],
+      prices: { '2-4': 129900, '2-6': 129900, '2-8': 139900 },
+      stock: 6,
+    },
+  },
+  {
+    category: 'chuda',
+    collections: ['bridal-bangles', 'wedding-guest'],
+    kadaCount: 0,
+    material: 'boor',
+    name: 'Rani Boor Chuda 5 per Hand',
+    occasions: ['wedding-season'],
+    piecesTotal: 10,
+    productType: 'chuda_set',
+    shortDescription: 'Boor chuda with five bangles for each hand, sold as a pair.',
+    slug: 'rani-boor-chuda-5-per-hand',
+    variants: {
+      colours: ['rani', 'maroon', 'ivory'],
+      prices: { '2-4': 249900, '2-6': 249900, '2-8': 259900 },
+      stock: 5,
+    },
+  },
+]
+
+const seedSizes: Array<[string, string, number | undefined, number]> = [
+  ['2-2', '2-2', 54, 10],
+  ['2-4', '2-4', 57.2, 20],
+  ['2-6', '2-6', 60.3, 30],
+  ['2-8', '2-8', 63.5, 40],
+  ['2-10', '2-10', 66.7, 50],
+  ['2-12', '2-12', 70, 60],
+]
+
+const seedColours: Array<[string, string, string, number]> = [
+  ['Ivory', '#F3EBDD', 'Boor in ivory or cream.', 10],
+  ['Cream', '#F6EEDA', '', 15],
+  ['Chiku', '#C9A66B', 'Pale yellow-brown; the shade varies slightly between batches.', 20],
+  ['Red', '#B3122B', '', 30],
+  ['Maroon', '#6F1D2A', '', 40],
+  ['Rani', '#C2185B', 'Dark pink.', 50],
+  ['Teal', '#127C7C', '', 60],
+  ['Green', '#1F7A4C', '', 70],
+  ['Yellow', '#E0B01E', '', 80],
+  ['Red Green', '#7C5A1E', 'Red and green together.', 90],
+  ['Multicolour', '#8E4FA8', '', 100],
+]
+
+const seedOccasions = [
+  'Wedding Season',
+  'Teej',
+  'Karwa Chauth',
+  'Gangaur',
+  'Navratri',
+  'Diwali',
+  'Holi',
+  'Raksha Bandhan',
+  'Eid',
+  'Daily Wear',
+]
+
+type JewellerySeed = {
+  category: string
+  colours: string[]
+  components: Array<[string, number]>
+  finish: string
+  name: string
+  occasions: string[]
+  pricePaise: number
+  shortDescription: string
+  slug: string
+  stock: number
+  stones: string[]
+  styles: string[]
+  wear?: 'both' | 'clip_on' | 'pierced'
+}
+
+const jewelleryPieces: Array<[string, boolean]> = [
+  ['Necklace', false],
+  ['Earrings', true],
+  ['Ear chain', true],
+  ['Maang tikka', false],
+  ['Rakhdi', false],
+  ['Sheeshphool', false],
+  ['Nath', false],
+  ['Besar', false],
+  ['Bajuband', true],
+  ['Loom', false],
+  ['Hathphool', false],
+  ['Bracelet', false],
+  ['Bangdi', true],
+  ['Ring', false],
+  ['Anklet', true],
+]
+const jewelleryStyleNames = [
+  'Traditional',
+  'Fancy',
+  'Kundan-look',
+  'Polki-look',
+  'Jadau-look',
+  'Meenakari',
+  'Temple',
+  'Pearl',
+  'Oxidised',
+  'Beaded',
+]
+const finishNames = [
+  'Gold-look polish',
+  'Micro polish (gold-look)',
+  'Matte gold-look',
+  'Antique gold-look',
+  'Rose gold-look',
+  'Silver-look',
+  'Oxidised',
+]
+const stoneNames = [
+  'AD / CZ stones',
+  'Kundan-look stones',
+  'Polki-look stones',
+  'Pearl-look beads',
+  'Beads',
+  'Crystals',
+  'Enamel (meenakari)',
+]
+const jewelleryCategories: Array<[string, string, string, string]> = [
+  ['Necklace Sets', 'necklace-sets', 'NKS', 'Necklaces sold with matching earrings.'],
+  ['Necklaces', 'necklaces', 'NCK', 'Necklaces and chokers on their own.'],
+  ['Earrings', 'earrings', 'ERG', 'Jhumka, chandbali, studs and danglers.'],
+  ['Head Ornaments', 'head-ornaments', 'HDO', 'Maang tikka, rakhdi and sheeshphool.'],
+  ['Nose Ornaments', 'nose-ornaments', 'NSO', 'Nath and besar.'],
+  ['Armlets', 'armlets', 'ARM', 'Bajuband and loom.'],
+  ['Bracelets & Hathphool', 'bracelets-hathphool', 'BRC', 'Bracelets, bangdi and hathphool.'],
+  ['Bridal Sets', 'bridal-sets', 'BRD', 'Full sets with several parts.'],
+]
+
+// Development sample products only: the photos, prices and names are placeholders.
+const jewellerySeeds: JewellerySeed[] = [
+  {
+    category: 'necklace-sets',
+    colours: ['rani', 'maroon', 'green'],
+    components: [
+      ['Necklace', 1],
+      ['Earrings', 1],
+    ],
+    finish: 'Antique gold-look',
+    name: 'Sample Pearl Choker Set',
+    occasions: ['wedding-season', 'karwa-chauth'],
     pricePaise: 189900,
-    sku: 'RJ-JHM-MEENA-GRN',
-    slug: 'jaipur-meenakari-jhumkas',
-    stoneType: 'Pearl and enamel',
-    stock: 31,
+    shortDescription: 'A pearl-look choker with matching earrings.',
+    slug: 'sample-pearl-choker-set',
+    stock: 6,
+    stones: ['AD / CZ stones', 'Pearl-look beads'],
+    styles: ['Traditional', 'Pearl'],
   },
   {
-    category: 'necklaces',
-    collections: ['wedding-guest', 'festive-jewelry'],
-    colorCode: 'pearl-white',
-    material: 'Alloy',
-    name: 'Sheesh Mahal Kundan Necklace',
-    occasion: 'wedding',
-    plating: 'Gold Tone',
-    pricePaise: 599900,
-    sku: 'RJ-NCK-SHEESH-01',
-    slug: 'sheesh-mahal-kundan-necklace',
-    stoneType: 'Kundan and faux pearl',
-    stock: 12,
+    category: 'necklace-sets',
+    colours: ['red'],
+    components: [
+      ['Necklace', 1],
+      ['Earrings', 1],
+    ],
+    finish: 'Micro polish (gold-look)',
+    name: 'Sample Hasli Style Necklace Set',
+    occasions: ['daily-wear', 'wedding-season'],
+    pricePaise: 129900,
+    shortDescription: 'A gold-look collar necklace with matching earrings.',
+    slug: 'sample-hasli-style-necklace-set',
+    stock: 8,
+    stones: ['AD / CZ stones'],
+    styles: ['Fancy'],
   },
   {
     category: 'earrings',
-    collections: ['everyday-elegance', 'gifting-edit'],
-    colorCode: 'gold',
-    material: 'Sterling Silver',
-    name: 'Desert Bloom Stud Earrings',
-    occasion: 'everyday',
-    plating: '18K Gold Vermeil',
-    pricePaise: 149900,
-    sku: 'RJ-ERN-BLOOM-01',
-    slug: 'desert-bloom-stud-earrings',
-    stoneType: 'Cubic zirconia',
-    stock: 45,
+    colours: ['rani', 'green'],
+    components: [
+      ['Earrings', 1],
+      ['Ear chain', 1],
+    ],
+    finish: 'Gold-look polish',
+    name: 'Sample Chandbali Earrings with Ear Chain',
+    occasions: ['wedding-season', 'navratri'],
+    pricePaise: 69900,
+    shortDescription: 'Chandbali earrings with pearl-look drops and ear chains.',
+    slug: 'sample-chandbali-earrings-ear-chain',
+    stock: 10,
+    stones: ['Kundan-look stones', 'Pearl-look beads'],
+    styles: ['Kundan-look', 'Traditional'],
+    wear: 'pierced',
   },
   {
-    category: 'bridal-sets',
-    collections: ['bridal-bangles', 'jaipur-edit'],
-    colorCode: 'maroon',
-    material: 'Brass',
-    name: 'Maharani Polki Bridal Set',
-    occasion: 'wedding',
-    plating: 'Antique Gold',
-    pricePaise: 1299900,
-    sku: 'RJ-BRD-MAHARANI-01',
-    slug: 'maharani-polki-bridal-set',
-    stoneType: 'Polki, kundan and faux pearl',
-    stock: 6,
+    category: 'armlets',
+    colours: ['maroon'],
+    components: [['Bajuband', 1]],
+    finish: 'Antique gold-look',
+    name: 'Sample Rajputi Bajuband',
+    occasions: ['wedding-season', 'gangaur'],
+    pricePaise: 89900,
+    shortDescription: 'A pair of adjustable Rajputi bajuband.',
+    slug: 'sample-rajputi-bajuband',
+    stock: 5,
+    stones: ['Kundan-look stones'],
+    styles: ['Traditional', 'Jadau-look'],
   },
 ]
+
+const seedJewellery = async (payload: Payload, mediaID: number, colourIDs: Map<string, number>) => {
+  const idsByName = async (
+    collection: 'finishes' | 'jewellery-styles' | 'piece-types' | 'stone-types',
+    names: string[],
+    extra: (name: string, index: number) => Record<string, unknown> = () => ({}),
+  ) => {
+    const ids = new Map<string, number>()
+    let order = 10
+    for (const [index, name] of names.entries()) {
+      const row = await ensureLibrary(payload, collection, 'name', {
+        name,
+        slug: name
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, '-')
+          .replace(/^-|-$/g, ''),
+        sortOrder: order,
+        ...extra(name, index),
+      })
+      ids.set(name, row.id)
+      order += 10
+    }
+    return ids
+  }
+  const pieces = await idsByName(
+    'piece-types',
+    jewelleryPieces.map(([name]) => name),
+    (_name, index) => ({ soldAsPair: jewelleryPieces[index][1] }),
+  )
+  const styles = await idsByName('jewellery-styles', jewelleryStyleNames)
+  const finishes = await idsByName('finishes', finishNames)
+  const stones = await idsByName('stone-types', stoneNames)
+
+  const categories = new Map<string, Category>()
+  let order = 110
+  for (const [name, slug, skuCode, description] of jewelleryCategories) {
+    categories.set(
+      slug,
+      await ensureCategory(payload, {
+        department: 'jewellery',
+        description,
+        name,
+        skuCode,
+        slug,
+        sortOrder: order,
+      }),
+    )
+    order += 10
+  }
+
+  const occasionIDs = new Map<string, number>()
+  for (const slug of ['wedding-season', 'karwa-chauth', 'daily-wear', 'gangaur', 'navratri']) {
+    const found = await findBy(payload, 'occasions', 'slug', slug)
+    if (found.docs[0]) occasionIDs.set(slug, found.docs[0].id)
+  }
+
+  for (const item of jewellerySeeds) {
+    const category = categories.get(item.category)
+    if (!category) throw new Error(`Missing jewellery category ${item.category}.`)
+    const existing = await findBy(payload, 'products', 'slug', item.slug)
+    const product =
+      (existing.docs[0] as Product | undefined) ??
+      (await payload.create({
+        collection: 'products',
+        data: {
+          department: 'jewellery',
+          featuredImage: mediaID,
+          gallery: [{ caption: item.name, image: mediaID, sortOrder: 0 }],
+          isReturnable: true,
+          jewellery: {
+            baseMetal: 'brass',
+            components: item.components.map(([name, quantity]) => ({
+              piece: pieces.get(name) as number,
+              quantity,
+            })),
+            finish: finishes.get(item.finish),
+            fit: 'adjustable',
+            stoneTypes: item.stones.map((name) => stones.get(name) as number),
+            styles: item.styles.map((name) => styles.get(name) as number),
+            wear: item.wear,
+          },
+          name: item.name,
+          occasions: item.occasions
+            .map((slug) => occasionIDs.get(slug))
+            .filter((id): id is number => id !== undefined),
+          primaryCategory: category.id,
+          shortDescription: item.shortDescription,
+          slug: item.slug,
+          status: 'draft',
+        } as never,
+      }))
+
+    for (const colourCode of item.colours) {
+      const present = await payload.count({
+        collection: 'product-variants',
+        overrideAccess: true,
+        where: {
+          and: [{ product: { equals: product.id } }, { colorCode: { equals: colourCode } }],
+        },
+      })
+      if (present.totalDocs > 0) continue
+      const variant = await payload.create({
+        collection: 'product-variants',
+        data: {
+          colour: colourIDs.get(colourCode),
+          image: mediaID,
+          maxPerOrder: 3,
+          pricePaise: item.pricePaise,
+          product: product.id,
+          status: 'active',
+        } as never,
+      })
+      await payload.create({
+        collection: 'inventory',
+        context: {
+          inventoryAdjustment: { note: 'Development seed stock', reason: 'initial_stock' },
+        },
+        data: {
+          onHand: item.stock,
+          reserved: 0,
+          reorderPoint: Math.min(2, item.stock),
+          stockStatus: 'available',
+          variant: variant.id,
+        },
+        overrideAccess: true,
+      })
+    }
+    await payload.update({ collection: 'products', id: product.id, data: { status: 'active' } })
+  }
+}
 
 const seed = async () => {
   const payload = await getPayload({ config })
   payload.logger.info('Starting development catalog and shopping seed')
 
   const media = await ensureMedia(payload)
+
+  const materialIDs = new Map<string, number>()
+  for (const [name, slug, code, isPremium, sortOrder] of [
+    ['Glass', 'glass', 'GLS', false, 10],
+    ['Lakh', 'lakh', 'LAK', false, 20],
+    ['Boor', 'boor', 'BOR', true, 30],
+    ['Seep', 'seep', 'SEP', true, 40],
+  ] as const) {
+    const material = await ensureLibrary(payload, 'materials', 'code', {
+      code,
+      isPremium,
+      name,
+      slug,
+      sortOrder,
+    })
+    materialIDs.set(slug, material.id)
+  }
+
+  const sizeIDs = new Map<string, number>()
+  for (const [code, label, innerDiameterMm, sortOrder] of seedSizes) {
+    const size = await ensureLibrary(payload, 'sizes', 'code', {
+      code,
+      innerDiameterMm,
+      label,
+      sortOrder,
+    })
+    sizeIDs.set(code, size.id)
+  }
+
+  const colourIDs = new Map<string, number>()
+  for (const [name, swatchHex, note, sortOrder] of seedColours) {
+    const code = name.toLowerCase().replace(/\s+/g, '-')
+    const colour = await ensureLibrary(payload, 'colours', 'code', {
+      code,
+      name,
+      note: note || undefined,
+      sortOrder,
+      swatchHex,
+    })
+    colourIDs.set(code, colour.id)
+  }
+
+  const occasionIDs = new Map<string, number>()
+  let occasionOrder = 10
+  for (const name of seedOccasions) {
+    const slug = name.toLowerCase().replace(/\s+/g, '-')
+    const occasion = await ensureLibrary(payload, 'occasions', 'slug', {
+      name,
+      slug,
+      sortOrder: occasionOrder,
+    })
+    occasionIDs.set(slug, occasion.id)
+    occasionOrder += 10
+  }
+
   const categoryList = [
     await ensureCategory(payload, {
-      description: 'Traditional and contemporary bangle sets.',
+      description: 'Glass and lakh bangle sets.',
       name: 'Bangles',
       slug: 'bangles',
       sortOrder: 10,
     }),
     await ensureCategory(payload, {
-      description: 'Statement and everyday earrings.',
-      name: 'Earrings',
-      slug: 'earrings',
+      description: 'Kadas, always sold as a pair.',
+      name: 'Kadas',
+      slug: 'kadas',
       sortOrder: 20,
     }),
     await ensureCategory(payload, {
-      description: 'Necklaces inspired by Rajasthan craftsmanship.',
-      name: 'Necklaces',
-      slug: 'necklaces',
+      description: 'Two kadas and four bangles, together.',
+      name: 'Complete Sets',
+      slug: 'complete-sets',
       sortOrder: 30,
     }),
     await ensureCategory(payload, {
-      description: 'Coordinated jewelry sets for bridal celebrations.',
-      name: 'Bridal Sets',
-      slug: 'bridal-sets',
+      description: 'Boor and seep chuda for brides.',
+      name: 'Chuda',
+      slug: 'chuda',
       sortOrder: 40,
     }),
   ]
-  const earrings = categoryList.find(({ slug }) => slug === 'earrings')
-  if (!earrings) throw new Error('Earrings seed category was not created.')
-  categoryList.push(
-    await ensureCategory(payload, {
-      description: 'Classic bell-shaped earrings.',
-      name: 'Jhumkas',
-      parent: earrings.id,
-      slug: 'jhumkas',
-      sortOrder: 21,
-    }),
-  )
   const categories = new Map(categoryList.map((item) => [item.slug, item]))
 
   const collectionData = [
@@ -250,22 +606,8 @@ const seed = async () => {
       'wedding',
       20,
     ],
-    [
-      'Everyday Elegance',
-      'everyday-elegance',
-      'Lightweight jewelry for daily wear.',
-      'everyday',
-      30,
-    ],
-    ['Festive Jewelry', 'festive-jewelry', 'Statement pieces for Indian festivals.', 'festive', 40],
-    [
-      'Bridal Bangles',
-      'bridal-bangles',
-      'Heirloom-inspired bridal bangles and sets.',
-      'wedding',
-      50,
-    ],
-    ['Gifting Edit', 'gifting-edit', 'Jewelry selected for memorable gifts.', 'gifting', 60],
+    ['Festive Jewelry', 'festive-jewelry', 'Pieces for Indian festivals.', 'festive', 40],
+    ['Bridal Bangles', 'bridal-bangles', 'Bridal bangles, kadas and chuda.', 'wedding', 50],
   ] as const
   const collectionList = []
   for (const [title, slug, summary, occasion, sortOrder] of collectionData) {
@@ -275,34 +617,6 @@ const seed = async () => {
   }
   const collections = new Map(collectionList.map((item) => [item.slug, item]))
 
-  const color = await ensureAttributeDefinition(payload, {
-    code: 'color',
-    name: 'Color',
-    sortOrder: 10,
-  })
-  const size = await ensureAttributeDefinition(payload, {
-    code: 'size',
-    name: 'Size',
-    sortOrder: 20,
-  })
-  for (const [code, label, swatchHex, sortOrder] of [
-    ['ruby-red', 'Ruby Red', '#9B1B30', 10],
-    ['emerald-green', 'Emerald Green', '#176B52', 20],
-    ['pearl-white', 'Pearl White', '#F4EAD8', 30],
-    ['gold', 'Gold', '#C79022', 40],
-    ['maroon', 'Maroon', '#6F1D2A', 50],
-  ] as const) {
-    await ensureAttributeOption(payload, color.id, { code, label, swatchHex, sortOrder })
-  }
-  for (const [code, label, sortOrder] of [
-    ['free-size', 'Free Size', 10],
-    ['2-4', '2.4', 20],
-    ['2-6', '2.6', 30],
-    ['2-8', '2.8', 40],
-  ] as const) {
-    await ensureAttributeOption(payload, size.id, { code, label, sortOrder })
-  }
-
   for (const item of productSeeds) {
     const category = categories.get(item.category)
     const productCollections = item.collections.map((slug) => collections.get(slug)?.id)
@@ -310,150 +624,87 @@ const seed = async () => {
       throw new Error(`Seed relationships are missing for ${item.slug}.`)
     }
 
-    const productData = {
-      categories: [category.id],
-      collections: productCollections as number[],
-      featuredImage: media.id,
-      gallery: [{ caption: item.name, image: media.id, sortOrder: 0 }],
-      isFeatured: item.pricePaise >= 500000,
-      isReturnable: true,
-      jewelryDetails: {
-        brand: 'Rajasthan Jewelry',
-        material: item.material,
-        plating: item.plating,
-        stoneType: item.stoneType,
-      },
-      name: item.name,
-      occasions: [{ occasion: item.occasion }],
-      primaryCategory: category.id,
-      returnWindowDays: 7,
-      seo: {
-        description: `Shop ${item.name}, crafted for ${item.occasion} occasions.`,
-        title: `${item.name} | Rajasthan Jewelry`,
-      },
-      shortDescription: `${item.stoneType} jewelry finished in ${item.plating}.`,
-      slug: item.slug,
-      specifications: [
-        { name: 'Material', value: item.material },
-        { name: 'Plating', value: item.plating },
-      ],
-      status: 'draft' as const,
-      styleTags: [{ label: 'Rajasthani' }, { label: item.occasion }],
-      taxClass: 'standard' as const,
-    }
     const existingProduct = await findBy(payload, 'products', 'slug', item.slug)
-    const existingProductDocument = existingProduct.docs[0] as Product | undefined
-    const product = existingProductDocument
-      ? await payload.update({
-          collection: 'products',
-          id: existingProductDocument.id,
-          data: productData,
-        })
-      : await payload.create({ collection: 'products', data: productData })
-
-    const existingVariant = await findBy(payload, 'product-variants', 'sku', item.sku)
-    const existingVariantDocument = existingVariant.docs[0] as ProductVariant | undefined
-    const optionSignature = `${item.category === 'bangles' ? '2-4' : 'free-size'}|${item.colorCode}|`
-    const variant = existingVariantDocument
-      ? await payload.update({
-          collection: 'product-variants',
-          id: existingVariantDocument.id,
-          data: {
-            colorCode: item.colorCode,
-            image: media.id,
-            maxPerOrder: 5,
-            optionSignature,
-            pricePaise: item.pricePaise,
-            product: product.id,
-            sizeCode: item.category === 'bangles' ? '2-4' : 'free-size',
-            sku: item.sku,
-            status: 'active',
-          },
-        })
-      : await payload.create({
-          collection: 'product-variants',
-          data: {
-            colorCode: item.colorCode,
-            image: media.id,
-            maxPerOrder: 5,
-            optionSignature,
-            pricePaise: item.pricePaise,
-            product: product.id,
-            sizeCode: item.category === 'bangles' ? '2-4' : 'free-size',
-            sku: item.sku,
-            status: 'active',
-          },
-        })
-
-    const existingInventory = await findBy(payload, 'inventory', 'variant', variant.id)
-    if (!existingInventory.docs[0]) {
-      await payload.create({
-        collection: 'inventory',
-        context: {
-          inventoryAdjustment: { note: 'Phase 2 seed stock', reason: 'initial_stock' },
-        },
+    const existingDocument = existingProduct.docs[0] as Product | undefined
+    // The design number is assigned once, on creation; reruns only top up what is missing.
+    const product =
+      existingDocument ??
+      (await payload.create({
+        collection: 'products',
         data: {
-          onHand: item.stock,
-          reserved: 0,
-          reorderPoint: Math.min(5, item.stock),
-          stockStatus: item.stock > 0 ? 'available' : 'out_of_stock',
-          variant: variant.id,
+          department: 'bangles',
+          categories: [category.id],
+          collections: productCollections as number[],
+          featuredImage: media.id,
+          gallery: [{ caption: item.name, image: media.id, sortOrder: 0 }],
+          isFeatured: item.productType === 'chuda_set',
+          isReturnable: true,
+          material: materialIDs.get(item.material),
+          name: item.name,
+          occasions: item.occasions.map((slug) => occasionIDs.get(slug) as number),
+          primaryCategory: category.id,
+          setDetails: {
+            kadaCount: item.kadaCount,
+            piecesTotal: item.piecesTotal,
+            productType: item.productType,
+          },
+          shortDescription: item.shortDescription,
+          slug: item.slug,
+          status: 'draft',
+          styleTags: [{ label: 'Rajasthani' }],
+          taxClass: 'standard',
         },
-        overrideAccess: true,
-      })
-    }
+      }))
 
-    if (item.category === 'bangles') {
-      for (const [sku, sizeCode, pricePaise, stock] of [
-        ['RJ-BNG-RUBY-26', '2-6', 349900, 14],
-        ['RJ-BNG-RUBY-28', '2-8', 359900, 9],
-      ] as const) {
-        const extraVariantResult = await findBy(payload, 'product-variants', 'sku', sku)
-        const extraVariantDocument = extraVariantResult.docs[0] as ProductVariant | undefined
-        const data = {
-          colorCode: item.colorCode,
-          image: media.id,
-          maxPerOrder: 5,
-          optionSignature: `${sizeCode}|${item.colorCode}|`,
-          pricePaise,
-          product: product.id,
-          sizeCode,
-          sku,
-          status: 'active' as const,
-        }
-        const extraVariant = extraVariantDocument
-          ? await payload.update({
-              collection: 'product-variants',
-              id: extraVariantDocument.id,
-              data,
-            })
-          : await payload.create({ collection: 'product-variants', data })
-        const extraInventory = await findBy(payload, 'inventory', 'variant', extraVariant.id)
-        if (!extraInventory.docs[0]) {
-          await payload.create({
-            collection: 'inventory',
-            context: {
-              inventoryAdjustment: { note: 'Phase 2 seed stock', reason: 'initial_stock' },
-            },
-            data: {
-              onHand: stock,
-              reorderPoint: 5,
-              reserved: 0,
-              stockStatus: 'available',
-              variant: extraVariant.id,
-            },
-            overrideAccess: true,
-          })
-        }
+    for (const colourCode of item.variants.colours) {
+      for (const [sizeCode, pricePaise] of Object.entries(item.variants.prices)) {
+        const present = await payload.count({
+          collection: 'product-variants',
+          overrideAccess: true,
+          where: {
+            and: [
+              { product: { equals: product.id } },
+              { sizeCode: { equals: sizeCode } },
+              { colorCode: { equals: colourCode } },
+            ],
+          },
+        })
+        if (present.totalDocs > 0) continue
+
+        // The SKU is generated from the design number, material, type, colour and size.
+        const variant = await payload.create({
+          collection: 'product-variants',
+          data: {
+            colour: colourIDs.get(colourCode),
+            image: media.id,
+            maxPerOrder: 5,
+            pricePaise,
+            product: product.id,
+            size: sizeIDs.get(sizeCode),
+            status: 'active',
+          } as never,
+        })
+        await payload.create({
+          collection: 'inventory',
+          context: {
+            inventoryAdjustment: { note: 'Development seed stock', reason: 'initial_stock' },
+          },
+          data: {
+            onHand: item.variants.stock,
+            reserved: 0,
+            reorderPoint: Math.min(3, item.variants.stock),
+            stockStatus: 'available',
+            variant: variant.id,
+          },
+          overrideAccess: true,
+        })
       }
     }
 
-    await payload.update({
-      collection: 'products',
-      id: product.id,
-      data: { status: 'active' },
-    })
+    await payload.update({ collection: 'products', id: product.id, data: { status: 'active' } })
   }
+
+  await seedJewellery(payload, media.id, colourIDs)
 
   const existingPromotion = await findBy(payload, 'promotions', 'name', 'Welcome Offer')
   const promotionData = {

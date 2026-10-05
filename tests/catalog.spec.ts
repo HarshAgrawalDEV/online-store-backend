@@ -7,11 +7,13 @@ describe('catalog query validation', () => {
   it('normalizes supported filters and prices in paise', () => {
     expect(
       parseCatalogFilters(
-        'http://localhost/api/catalog/products?page=2&limit=12&minPrice=10000&maxPrice=250000&available=true&color=Ruby-Red&sort=price-low',
+        'http://localhost/api/catalog/products?page=2&limit=12&minPrice=10000&maxPrice=250000&available=true&color=Ruby-Red,Teal&material=Boor&size=2-6&sort=price-low',
       ),
     ).toMatchObject({
       available: true,
-      color: 'ruby-red',
+      color: ['ruby-red', 'teal'],
+      material: ['boor'],
+      size: ['2-6'],
       limit: 12,
       maxPrice: 250000,
       minPrice: 10000,

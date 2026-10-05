@@ -93,7 +93,7 @@ The health endpoint performs a lightweight query against PostgreSQL. It returns 
 
 ## Catalog and inventory
 
-Payload Admin provides native CRUD screens for media, categories, curated collections, attribute definitions/options, products, variants, inventory, and immutable inventory movements. Catalog managers can manage catalog content; catalog managers, order managers, and super administrators can adjust stock.
+Payload Admin provides native CRUD screens for media, categories, curated collections, materials, sizes, colours, occasions, products, variants, inventory, and immutable inventory movements. Catalog managers can manage catalog content; catalog managers, order managers, and super administrators can adjust stock.
 
 Create the bundled development catalog after migrations:
 

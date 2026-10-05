@@ -3,12 +3,13 @@ import type { CollectionConfig } from 'payload'
 import { canManageCatalog, readActiveCategories } from '../access/catalog'
 import { preventCategoryCycles } from '../hooks/categories'
 import { toSlug } from '../lib/catalog'
+import { departmentLabels, departments } from '../lib/jewellery'
 
 export const Categories: CollectionConfig = {
   slug: 'categories',
   admin: {
     group: 'Catalog',
-    defaultColumns: ['name', 'parent', 'isActive', 'sortOrder'],
+    defaultColumns: ['name', 'department', 'parent', 'isActive', 'sortOrder'],
     useAsTitle: 'name',
   },
   access: {
@@ -21,6 +22,37 @@ export const Categories: CollectionConfig = {
     beforeChange: [preventCategoryCycles],
   },
   fields: [
+    {
+      name: 'department',
+      type: 'select',
+      required: true,
+      defaultValue: 'bangles',
+      index: true,
+      options: departments.map((value) => ({ label: departmentLabels[value], value })),
+      admin: {
+        description:
+          'Bangles and Jewellery are separate departments in the app. A product can only be in a category of its own department.',
+      },
+    },
+    {
+      name: 'skuCode',
+      type: 'text',
+      maxLength: 4,
+      admin: {
+        description:
+          'Jewellery only: 2 to 4 letters used at the start of item codes, for example NKS for Necklace Sets.',
+      },
+      hooks: {
+        beforeValidate: [
+          ({ value }) =>
+            value
+              ? String(value)
+                  .toUpperCase()
+                  .replace(/[^A-Z0-9]/g, '')
+              : value,
+        ],
+      },
+    },
     {
       name: 'name',
       type: 'text',

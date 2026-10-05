@@ -43,6 +43,10 @@ describe('migration history', () => {
       '20261002_101603_phase_3_customer_shopping',
       '20261002_102000_phase_3_invariants',
       '20261003_060603',
+      '20261004_062642_catalog_model',
+      '20261004_072339_remove_jewelry_details',
+      '20261004_105124_stock_alerts',
+      '20261004_114820_jewellery_department',
     ])
     expect(applied).not.toContain('dev')
   })

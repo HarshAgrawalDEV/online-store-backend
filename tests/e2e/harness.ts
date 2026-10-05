@@ -337,6 +337,7 @@ export const startHarness = async (): Promise<Harness> => {
       `DELETE FROM payment_webhook_events WHERE external_event_id LIKE 'evt_e2e%' OR external_event_id LIKE 'evt_dup_%'`,
       `DELETE FROM cart_items WHERE cart_id IN ${carts} OR variant_id IN ${variants}`,
       `DELETE FROM carts WHERE customer_id IN ${customers}`,
+      `DELETE FROM stock_alerts WHERE customer_id IN ${customers} OR variant_id IN ${variants}`,
       `DELETE FROM wishlist_items WHERE wishlist_id IN ${wishlists} OR product_id IN ${products}`,
       `DELETE FROM wishlists WHERE customer_id IN ${customers}`,
       `DELETE FROM customer_addresses WHERE customer_id IN ${customers}`,
@@ -348,6 +349,14 @@ export const startHarness = async (): Promise<Harness> => {
       `DELETE FROM coupons WHERE code LIKE 'E2E%'`,
       `DELETE FROM promotions WHERE name LIKE 'E2E e2e%'`,
       `DELETE FROM categories WHERE slug LIKE 'e2e%'`,
+      `DELETE FROM materials WHERE slug LIKE 'e2e%'`,
+      `DELETE FROM piece_types WHERE slug LIKE 'e2e%'`,
+      `DELETE FROM jewellery_styles WHERE slug LIKE 'e2e%'`,
+      `DELETE FROM finishes WHERE slug LIKE 'e2e%'`,
+      `DELETE FROM stone_types WHERE slug LIKE 'e2e%'`,
+      `DELETE FROM colours WHERE code LIKE 'e2e%'`,
+      `DELETE FROM sizes WHERE code LIKE 'e2e%'`,
+      `DELETE FROM occasions WHERE slug LIKE 'e2e%'`,
       `DELETE FROM media WHERE alt = 'E2E placeholder'`,
       `DELETE FROM admins WHERE email LIKE 'e2e%@example.test'`,
     ]
@@ -392,6 +401,11 @@ export const startHarness = async (): Promise<Harness> => {
     overrideAccess: true,
   })
   created.categories.push(sharedCategory.id)
+  const sharedMaterial = await payload.create({
+    collection: 'materials',
+    data: { code: 'E2E', isActive: true, name: `E2E ${runTag}`, slug: `${runTag}-mat` },
+    overrideAccess: true,
+  })
   // Upload under a unique e2e- name so the stored file can be recognised and removed afterwards.
   const uploadSource = path.join(os.tmpdir(), `e2e-${runTag}.svg`)
   fs.copyFileSync(
@@ -416,8 +430,10 @@ export const startHarness = async (): Promise<Harness> => {
         collection: 'products',
         data: {
           featuredImage: media.id,
+          material: sharedMaterial.id,
           name,
           primaryCategory: sharedCategory.id,
+          setDetails: { kadaCount: 0, piecesTotal: 12, productType: 'bangle_set' },
           slug,
           status: 'draft',
         } as any,

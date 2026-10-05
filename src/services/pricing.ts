@@ -1,3 +1,5 @@
+import { describeJewelleryLine, type JewelleryComponent } from '../lib/jewellery'
+import { describeVariantLine } from '../lib/set-details'
 import type { Cart, CartItem, Coupon, Product, ProductVariant, Promotion } from '../payload-types'
 import type { PayloadRequest } from 'payload'
 
@@ -114,6 +116,36 @@ export const calculateCartPricing = async (req: PayloadRequest, cart: Cart, item
       sku: variant.sku,
       sizeCode: variant.sizeCode ?? null,
       colorCode: variant.colorCode ?? null,
+      description:
+        product.department === 'jewellery'
+          ? describeJewelleryLine({
+              colourName: variant.colourLabel,
+              components: (product.jewellery?.components ?? []).flatMap(
+                (entry): JewelleryComponent[] =>
+                  typeof entry.piece === 'object' && entry.piece
+                    ? [
+                        {
+                          name: entry.piece.name,
+                          quantity: Number(entry.quantity ?? 1),
+                          soldAsPair: Boolean(entry.piece.soldAsPair),
+                        },
+                      ]
+                    : [],
+              ),
+              finishName:
+                typeof product.jewellery?.finish === 'object'
+                  ? product.jewellery.finish?.name
+                  : null,
+              sizeLabel: variant.sizeLabel,
+            })
+          : describeVariantLine({
+              colourName: variant.colourLabel,
+              kadaCount: product.setDetails?.kadaCount,
+              materialName: typeof product.material === 'object' ? product.material?.name : null,
+              piecesTotal: product.setDetails?.piecesTotal,
+              productType: product.setDetails?.productType,
+              sizeLabel: variant.sizeLabel,
+            }),
       status: variant.status,
     },
     quantity,

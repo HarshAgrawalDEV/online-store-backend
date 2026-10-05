@@ -51,6 +51,12 @@ export const readActiveVariants: Access = ({ req: { user } }) => {
   return where
 }
 
+/** Library lists (materials, sizes, colours, occasions): the public sees only active entries. */
+export const readActiveLibraryItems: Access = ({ req: { user } }) => {
+  if (isActiveStaff(user)) return true
+  return { isActive: { equals: true } }
+}
+
 export const readActiveAttributeOptions: Access = ({ req: { user } }) => {
   if (isActiveStaff(user)) return true
   return { isActive: { equals: true } }

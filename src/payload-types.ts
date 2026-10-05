@@ -72,8 +72,15 @@ export interface Config {
     media: Media;
     categories: Category;
     collections: Collection;
-    'catalog-attribute-definitions': CatalogAttributeDefinition;
-    'catalog-attribute-options': CatalogAttributeOption;
+    materials: Material;
+    sizes: Size;
+    colours: Colour;
+    occasions: Occasion;
+    'piece-types': PieceType;
+    'jewellery-styles': JewelleryStyle;
+    finishes: Finish;
+    'stone-types': StoneType;
+    'stock-alerts': StockAlert;
     products: Product;
     'product-variants': ProductVariant;
     inventory: Inventory;
@@ -93,6 +100,8 @@ export interface Config {
     'payment-attempts': PaymentAttempt;
     'payment-webhook-events': PaymentWebhookEvent;
     'coupon-redemptions': CouponRedemption;
+    'search-synonyms': SearchSynonym;
+    'search-queries': SearchQuery;
     'payload-kv': PayloadKv;
     'payload-locked-documents': PayloadLockedDocument;
     'payload-preferences': PayloadPreference;
@@ -120,8 +129,15 @@ export interface Config {
     media: MediaSelect<false> | MediaSelect<true>;
     categories: CategoriesSelect<false> | CategoriesSelect<true>;
     collections: CollectionsSelect<false> | CollectionsSelect<true>;
-    'catalog-attribute-definitions': CatalogAttributeDefinitionsSelect<false> | CatalogAttributeDefinitionsSelect<true>;
-    'catalog-attribute-options': CatalogAttributeOptionsSelect<false> | CatalogAttributeOptionsSelect<true>;
+    materials: MaterialsSelect<false> | MaterialsSelect<true>;
+    sizes: SizesSelect<false> | SizesSelect<true>;
+    colours: ColoursSelect<false> | ColoursSelect<true>;
+    occasions: OccasionsSelect<false> | OccasionsSelect<true>;
+    'piece-types': PieceTypesSelect<false> | PieceTypesSelect<true>;
+    'jewellery-styles': JewelleryStylesSelect<false> | JewelleryStylesSelect<true>;
+    finishes: FinishesSelect<false> | FinishesSelect<true>;
+    'stone-types': StoneTypesSelect<false> | StoneTypesSelect<true>;
+    'stock-alerts': StockAlertsSelect<false> | StockAlertsSelect<true>;
     products: ProductsSelect<false> | ProductsSelect<true>;
     'product-variants': ProductVariantsSelect<false> | ProductVariantsSelect<true>;
     inventory: InventorySelect<false> | InventorySelect<true>;
@@ -141,6 +157,8 @@ export interface Config {
     'payment-attempts': PaymentAttemptsSelect<false> | PaymentAttemptsSelect<true>;
     'payment-webhook-events': PaymentWebhookEventsSelect<false> | PaymentWebhookEventsSelect<true>;
     'coupon-redemptions': CouponRedemptionsSelect<false> | CouponRedemptionsSelect<true>;
+    'search-synonyms': SearchSynonymsSelect<false> | SearchSynonymsSelect<true>;
+    'search-queries': SearchQueriesSelect<false> | SearchQueriesSelect<true>;
     'payload-kv': PayloadKvSelect<false> | PayloadKvSelect<true>;
     'payload-locked-documents': PayloadLockedDocumentsSelect<false> | PayloadLockedDocumentsSelect<true>;
     'payload-preferences': PayloadPreferencesSelect<false> | PayloadPreferencesSelect<true>;
@@ -286,6 +304,14 @@ export interface Media {
  */
 export interface Category {
   id: number;
+  /**
+   * Bangles and Jewellery are separate departments in the app. A product can only be in a category of its own department.
+   */
+  department: 'bangles' | 'jewellery';
+  /**
+   * Jewellery only: 2 to 4 letters used at the start of item codes, for example NKS for Necklace Sets.
+   */
+  skuCode?: string | null;
   name: string;
   slug: string;
   parent?: (number | null) | Category;
@@ -329,9 +355,123 @@ export interface Collection {
  */
 export interface Product {
   id: number;
+  /**
+   * To make it active it needs a photo, material, what is sold, and at least one active variant.
+   */
+  status: 'draft' | 'active' | 'archived';
+  /**
+   * Assigned automatically and never reused. Appears in SKUs.
+   */
+  designNumber?: number | null;
+  /**
+   * Show a "Featured" badge.
+   */
+  isFeatured: boolean;
+  publishedAt?: string | null;
+  /**
+   * Choose this first. Bangles (glass, lakh, boor, seep, chuda) and Jewellery (necklace sets, earrings, nath…) ask for different details.
+   */
+  department: 'bangles' | 'jewellery';
   name: string;
+  /**
+   * Web address part. Filled in from the name.
+   */
   slug: string;
+  /**
+   * The main shelf. Only categories of the chosen department are listed.
+   */
+  primaryCategory: number | Category;
+  /**
+   * Bangles only. Required before the product can be published.
+   */
+  material?: (number | null) | Material;
+  /**
+   * Festivals and seasons this suits. Used by the Occasion filter.
+   */
+  occasions?: (number | Occasion)[] | null;
+  /**
+   * Optional: extra shelves to also list it under.
+   */
+  categories?: (number | Category)[] | null;
+  /**
+   * Optional: curated collections such as Wedding Guest.
+   */
+  collections?: (number | Collection)[] | null;
+  /**
+   * One or two lines shown under the name. Also used as a hint when writing an AI description.
+   */
   shortDescription?: string | null;
+  /**
+   * List every part the customer receives. One part is a single piece; more than one is a set.
+   */
+  jewellery?: {
+    components?:
+      | {
+          /**
+           * For example Necklace, Earrings, Maang tikka.
+           */
+          piece: number | PieceType;
+          /**
+           * A pair of earrings is 1.
+           */
+          quantity: number;
+          id?: string | null;
+        }[]
+      | null;
+    /**
+     * The polish. Required before the product can be published.
+     */
+    finish?: (number | null) | Finish;
+    /**
+     * Kundan-look, pearl, temple… pick all that fit.
+     */
+    styles?: (number | JewelleryStyle)[] | null;
+    stoneTypes?: (number | StoneType)[] | null;
+    /**
+     * Earrings and nose ornaments.
+     */
+    wear?: ('pierced' | 'clip_on' | 'both') | null;
+    fit?: ('adjustable' | 'fixed') | null;
+    baseMetal?: ('brass' | 'copper' | 'alloy' | 'other') | null;
+  };
+  /**
+   * Chuda: enter the total for both hands (5 per hand = 10). Kada pair is always 2 kadas. A complete set is 2 kadas plus bangles.
+   */
+  setDetails?: {
+    productType?: ('kada_pair' | 'bangle_set' | 'complete_set' | 'chuda_set') | null;
+    /**
+     * Total pieces in the set, both hands.
+     */
+    piecesTotal?: number | null;
+    /**
+     * Kadas in the set. Kada pair and complete set always have 2.
+     */
+    kadaCount?: number | null;
+  };
+  /**
+   * Each row is one size and colour with its own price and SKU. Open a row to change its price, or set its status to inactive to hide it. Stock is managed under Inventory.
+   */
+  variants?: {
+    docs?: (number | ProductVariant)[];
+    hasNextPage?: boolean;
+    totalDocs?: number;
+  };
+  /**
+   * The main photo. Shown on cards and first on the product page.
+   */
+  featuredImage?: (number | null) | Media;
+  /**
+   * More photos in the order shown. Link a photo to a variant to show it when that colour is chosen.
+   */
+  gallery?:
+    | {
+        image: number | Media;
+        variant?: (number | null) | ProductVariant;
+        caption?: string | null;
+        sortOrder: number;
+        id?: string | null;
+      }[]
+    | null;
   description?: {
     root: {
       type: string;
@@ -347,32 +487,27 @@ export interface Product {
     };
     [k: string]: unknown;
   } | null;
-  status: 'draft' | 'active' | 'archived';
-  primaryCategory: number | Category;
-  categories?: (number | Category)[] | null;
-  collections?: (number | Collection)[] | null;
-  jewelryDetails?: {
-    brand?: string | null;
-    material?: string | null;
-    plating?: string | null;
-    stoneType?: string | null;
+  /**
+   * The last machine-written draft. It is only a draft: it is never shown to customers until you use it as the description.
+   */
+  aiDraft?: {
+    text?: string | null;
+    model?: string | null;
+    generatedAt?: string | null;
   };
-  styleTags?:
-    | {
-        label: string;
-        id?: string | null;
-      }[]
-    | null;
-  occasions?:
-    | {
-        occasion: 'wedding' | 'haldi' | 'mehendi' | 'diwali' | 'festive' | 'everyday' | 'gifting';
-        id?: string | null;
-      }[]
-    | null;
+  /**
+   * Extra facts shown in "Product details", e.g. Finish: Sparkle.
+   */
   specifications?:
     | {
         name: string;
         value: string;
+        id?: string | null;
+      }[]
+    | null;
+  styleTags?:
+    | {
+        label: string;
         id?: string | null;
       }[]
     | null;
@@ -396,30 +531,112 @@ export interface Product {
   weightGrams?: number | null;
   hsnCode?: string | null;
   taxClass?: ('standard' | 'exempt' | 'custom') | null;
-  featuredImage?: (number | null) | Media;
-  /**
-   * Ordered product and variant imagery.
-   */
-  gallery?:
-    | {
-        image: number | Media;
-        variant?: (number | null) | ProductVariant;
-        caption?: string | null;
-        sortOrder: number;
-        id?: string | null;
-      }[]
-    | null;
-  isFeatured: boolean;
-  publishedAt?: string | null;
   seo?: {
     title?: string | null;
     description?: string | null;
   };
-  variants?: {
-    docs?: (number | ProductVariant)[];
-    hasNextPage?: boolean;
-    totalDocs?: number;
-  };
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "materials".
+ */
+export interface Material {
+  id: number;
+  name: string;
+  slug: string;
+  /**
+   * Short code used in SKUs, for example GLS, LAK, BOR, SEP.
+   */
+  code: string;
+  /**
+   * Shown as the premium material in the app (for example Boor).
+   */
+  isPremium: boolean;
+  /**
+   * Customer-facing note about the material. For Boor describe it as a synthetic material; never mention real ivory or tusk.
+   */
+  description?: string | null;
+  isActive: boolean;
+  sortOrder?: number | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "occasions".
+ */
+export interface Occasion {
+  id: number;
+  name: string;
+  slug: string;
+  sortOrder: number;
+  isActive: boolean;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * The parts a jewellery set is made of: necklace, earrings, maang tikka, nath, besar, loom… Name them the way you sell them.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "piece-types".
+ */
+export interface PieceType {
+  id: number;
+  name: string;
+  slug: string;
+  /**
+   * Tick for things that come as a pair, such as earrings or bajuband.
+   */
+  soldAsPair: boolean;
+  sortOrder: number;
+  isActive: boolean;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * The polish on the metal. These are imitation pieces, so use words such as "gold-look", never "gold plated" unless it is true.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "finishes".
+ */
+export interface Finish {
+  id: number;
+  name: string;
+  slug: string;
+  sortOrder: number;
+  isActive: boolean;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * How a design looks: kundan-look, polki-look, jadau-look, meenakari, temple, pearl, oxidised…
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "jewellery-styles".
+ */
+export interface JewelleryStyle {
+  id: number;
+  name: string;
+  slug: string;
+  sortOrder: number;
+  isActive: boolean;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * What the stones are made of: AD / CZ, kundan-look glass, pearl-look beads, crystals…
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "stone-types".
+ */
+export interface StoneType {
+  id: number;
+  name: string;
+  slug: string;
+  sortOrder: number;
+  isActive: boolean;
   updatedAt: string;
   createdAt: string;
 }
@@ -430,18 +647,32 @@ export interface Product {
 export interface ProductVariant {
   id: number;
   product: number | Product;
+  /**
+   * Leave empty to generate one, for example GLS-BNG12-014-TEAL-24.
+   */
   sku: string;
   optionSignature: string;
+  /**
+   * Choose from the size list.
+   */
+  size?: (number | null) | Size;
+  /**
+   * Choose from the shared colour library.
+   */
+  colour?: (number | null) | Colour;
+  /**
+   * A one-off colour that is not in the library. It shows on this product only until it is saved to the library.
+   */
+  customColourName?: string | null;
+  /**
+   * Tick and save to add the custom colour to the library for every product.
+   */
+  saveToColourLibrary?: boolean | null;
   sizeCode?: string | null;
+  sizeLabel?: string | null;
   colorCode?: string | null;
+  colourLabel?: string | null;
   finishCode?: string | null;
-  optionValues?:
-    | {
-        attribute: number | CatalogAttributeDefinition;
-        option: number | CatalogAttributeOption;
-        id?: string | null;
-      }[]
-    | null;
   pricePaise: number;
   compareAtPricePaise?: number | null;
   costPaise?: number | null;
@@ -460,30 +691,48 @@ export interface ProductVariant {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "catalog-attribute-definitions".
+ * via the `definition` "sizes".
  */
-export interface CatalogAttributeDefinition {
+export interface Size {
   id: number;
-  name: string;
+  /**
+   * For example 2-4. Used in SKUs and filters.
+   */
   code: string;
-  scope: 'product' | 'variant';
-  valueType: 'select' | 'multi_select' | 'text';
-  filterable: boolean;
-  sortOrder?: number | null;
+  label: string;
+  /**
+   * Inner diameter in millimetres, shown in the size guide.
+   */
+  innerDiameterMm?: number | null;
+  /**
+   * Display order: smaller sizes first.
+   */
+  sortOrder: number;
+  isActive: boolean;
   updatedAt: string;
   createdAt: string;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "catalog-attribute-options".
+ * via the `definition` "colours".
  */
-export interface CatalogAttributeOption {
+export interface Colour {
   id: number;
-  attribute: number | CatalogAttributeDefinition;
+  name: string;
+  /**
+   * Generated from the name. Used in filters.
+   */
   code: string;
-  label: string;
+  /**
+   * Short code used in SKUs, for example RANI or MAROON. Generated when empty.
+   */
+  shortCode?: string | null;
   swatchHex?: string | null;
-  sortOrder?: number | null;
+  sortOrder: number;
+  /**
+   * Optional customer note, for example "Shade may vary slightly" for chiku.
+   */
+  note?: string | null;
   isActive: boolean;
   updatedAt: string;
   createdAt: string;
@@ -504,19 +753,15 @@ export interface Inventory {
   createdAt: string;
 }
 /**
+ * Customers waiting for a sold-out option. Use it to decide what to restock first.
+ *
  * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "inventory-movements".
+ * via the `definition` "stock-alerts".
  */
-export interface InventoryMovement {
+export interface StockAlert {
   id: number;
+  customer: number | Customer;
   variant: number | ProductVariant;
-  quantityDelta: number;
-  reason: 'initial_stock' | 'manual_adjustment' | 'order_fulfilled' | 'order_cancelled' | 'return_restock' | 'damage';
-  referenceType?: string | null;
-  referenceId?: string | null;
-  performedBy?: (number | null) | Admin;
-  note?: string | null;
-  occurredAt: string;
   updatedAt: string;
   createdAt: string;
 }
@@ -551,6 +796,23 @@ export interface Customer {
     | null;
   password?: string | null;
   collection: 'customers';
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "inventory-movements".
+ */
+export interface InventoryMovement {
+  id: number;
+  variant: number | ProductVariant;
+  quantityDelta: number;
+  reason: 'initial_stock' | 'manual_adjustment' | 'order_fulfilled' | 'order_cancelled' | 'return_restock' | 'damage';
+  referenceType?: string | null;
+  referenceId?: string | null;
+  performedBy?: (number | null) | Admin;
+  note?: string | null;
+  occurredAt: string;
+  updatedAt: string;
+  createdAt: string;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
@@ -777,6 +1039,10 @@ export interface OrderItem {
   productNameSnapshot: string;
   sizeSnapshot?: string | null;
   colorSnapshot?: string | null;
+  /**
+   * What was bought, as shown on packing paperwork.
+   */
+  descriptionSnapshot?: string | null;
   imageUrlSnapshot?: string | null;
   quantity: number;
   unitPricePaise: number;
@@ -899,6 +1165,41 @@ export interface CouponRedemption {
   createdAt: string;
 }
 /**
+ * Add the different words customers type for the same thing, for example kada, kara, kangan.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "search-synonyms".
+ */
+export interface SearchSynonym {
+  id: number;
+  label: string;
+  terms: {
+    term: string;
+    id?: string | null;
+  }[];
+  isActive: boolean;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * Customer searches, newest first. Filter by result count 0 to see what was not found.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "search-queries".
+ */
+export interface SearchQuery {
+  id: number;
+  query: string;
+  normalizedQuery: string;
+  resultCount: number;
+  /**
+   * Only some of the words matched.
+   */
+  relaxed: boolean;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "payload-kv".
  */
@@ -939,12 +1240,40 @@ export interface PayloadLockedDocument {
         value: number | Collection;
       } | null)
     | ({
-        relationTo: 'catalog-attribute-definitions';
-        value: number | CatalogAttributeDefinition;
+        relationTo: 'materials';
+        value: number | Material;
       } | null)
     | ({
-        relationTo: 'catalog-attribute-options';
-        value: number | CatalogAttributeOption;
+        relationTo: 'sizes';
+        value: number | Size;
+      } | null)
+    | ({
+        relationTo: 'colours';
+        value: number | Colour;
+      } | null)
+    | ({
+        relationTo: 'occasions';
+        value: number | Occasion;
+      } | null)
+    | ({
+        relationTo: 'piece-types';
+        value: number | PieceType;
+      } | null)
+    | ({
+        relationTo: 'jewellery-styles';
+        value: number | JewelleryStyle;
+      } | null)
+    | ({
+        relationTo: 'finishes';
+        value: number | Finish;
+      } | null)
+    | ({
+        relationTo: 'stone-types';
+        value: number | StoneType;
+      } | null)
+    | ({
+        relationTo: 'stock-alerts';
+        value: number | StockAlert;
       } | null)
     | ({
         relationTo: 'products';
@@ -1021,6 +1350,14 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'coupon-redemptions';
         value: number | CouponRedemption;
+      } | null)
+    | ({
+        relationTo: 'search-synonyms';
+        value: number | SearchSynonym;
+      } | null)
+    | ({
+        relationTo: 'search-queries';
+        value: number | SearchQuery;
       } | null);
   globalSlug?: string | null;
   user:
@@ -1161,6 +1498,8 @@ export interface MediaSelect<T extends boolean = true> {
  * via the `definition` "categories_select".
  */
 export interface CategoriesSelect<T extends boolean = true> {
+  department?: T;
+  skuCode?: T;
   name?: T;
   slug?: T;
   parent?: T;
@@ -1197,29 +1536,115 @@ export interface CollectionsSelect<T extends boolean = true> {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "catalog-attribute-definitions_select".
+ * via the `definition` "materials_select".
  */
-export interface CatalogAttributeDefinitionsSelect<T extends boolean = true> {
+export interface MaterialsSelect<T extends boolean = true> {
   name?: T;
+  slug?: T;
   code?: T;
-  scope?: T;
-  valueType?: T;
-  filterable?: T;
+  isPremium?: T;
+  description?: T;
+  isActive?: T;
   sortOrder?: T;
   updatedAt?: T;
   createdAt?: T;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "catalog-attribute-options_select".
+ * via the `definition` "sizes_select".
  */
-export interface CatalogAttributeOptionsSelect<T extends boolean = true> {
-  attribute?: T;
+export interface SizesSelect<T extends boolean = true> {
   code?: T;
   label?: T;
-  swatchHex?: T;
+  innerDiameterMm?: T;
   sortOrder?: T;
   isActive?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "colours_select".
+ */
+export interface ColoursSelect<T extends boolean = true> {
+  name?: T;
+  code?: T;
+  shortCode?: T;
+  swatchHex?: T;
+  sortOrder?: T;
+  note?: T;
+  isActive?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "occasions_select".
+ */
+export interface OccasionsSelect<T extends boolean = true> {
+  name?: T;
+  slug?: T;
+  sortOrder?: T;
+  isActive?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "piece-types_select".
+ */
+export interface PieceTypesSelect<T extends boolean = true> {
+  name?: T;
+  slug?: T;
+  soldAsPair?: T;
+  sortOrder?: T;
+  isActive?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "jewellery-styles_select".
+ */
+export interface JewelleryStylesSelect<T extends boolean = true> {
+  name?: T;
+  slug?: T;
+  sortOrder?: T;
+  isActive?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "finishes_select".
+ */
+export interface FinishesSelect<T extends boolean = true> {
+  name?: T;
+  slug?: T;
+  sortOrder?: T;
+  isActive?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "stone-types_select".
+ */
+export interface StoneTypesSelect<T extends boolean = true> {
+  name?: T;
+  slug?: T;
+  sortOrder?: T;
+  isActive?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "stock-alerts_select".
+ */
+export interface StockAlertsSelect<T extends boolean = true> {
+  customer?: T;
+  variant?: T;
   updatedAt?: T;
   createdAt?: T;
 }
@@ -1228,47 +1653,44 @@ export interface CatalogAttributeOptionsSelect<T extends boolean = true> {
  * via the `definition` "products_select".
  */
 export interface ProductsSelect<T extends boolean = true> {
+  status?: T;
+  designNumber?: T;
+  isFeatured?: T;
+  publishedAt?: T;
+  department?: T;
   name?: T;
   slug?: T;
-  shortDescription?: T;
-  description?: T;
-  status?: T;
   primaryCategory?: T;
+  material?: T;
+  occasions?: T;
   categories?: T;
   collections?: T;
-  jewelryDetails?:
+  shortDescription?: T;
+  jewellery?:
     | T
     | {
-        brand?: T;
-        material?: T;
-        plating?: T;
-        stoneType?: T;
+        components?:
+          | T
+          | {
+              piece?: T;
+              quantity?: T;
+              id?: T;
+            };
+        finish?: T;
+        styles?: T;
+        stoneTypes?: T;
+        wear?: T;
+        fit?: T;
+        baseMetal?: T;
       };
-  styleTags?:
+  setDetails?:
     | T
     | {
-        label?: T;
-        id?: T;
+        productType?: T;
+        piecesTotal?: T;
+        kadaCount?: T;
       };
-  occasions?:
-    | T
-    | {
-        occasion?: T;
-        id?: T;
-      };
-  specifications?:
-    | T
-    | {
-        name?: T;
-        value?: T;
-        id?: T;
-      };
-  careInstructions?: T;
-  isReturnable?: T;
-  returnWindowDays?: T;
-  weightGrams?: T;
-  hsnCode?: T;
-  taxClass?: T;
+  variants?: T;
   featuredImage?: T;
   gallery?:
     | T
@@ -1279,15 +1701,39 @@ export interface ProductsSelect<T extends boolean = true> {
         sortOrder?: T;
         id?: T;
       };
-  isFeatured?: T;
-  publishedAt?: T;
+  description?: T;
+  aiDraft?:
+    | T
+    | {
+        text?: T;
+        model?: T;
+        generatedAt?: T;
+      };
+  specifications?:
+    | T
+    | {
+        name?: T;
+        value?: T;
+        id?: T;
+      };
+  styleTags?:
+    | T
+    | {
+        label?: T;
+        id?: T;
+      };
+  careInstructions?: T;
+  isReturnable?: T;
+  returnWindowDays?: T;
+  weightGrams?: T;
+  hsnCode?: T;
+  taxClass?: T;
   seo?:
     | T
     | {
         title?: T;
         description?: T;
       };
-  variants?: T;
   updatedAt?: T;
   createdAt?: T;
 }
@@ -1299,16 +1745,15 @@ export interface ProductVariantsSelect<T extends boolean = true> {
   product?: T;
   sku?: T;
   optionSignature?: T;
+  size?: T;
+  colour?: T;
+  customColourName?: T;
+  saveToColourLibrary?: T;
   sizeCode?: T;
+  sizeLabel?: T;
   colorCode?: T;
+  colourLabel?: T;
   finishCode?: T;
-  optionValues?:
-    | T
-    | {
-        attribute?: T;
-        option?: T;
-        id?: T;
-      };
   pricePaise?: T;
   compareAtPricePaise?: T;
   costPaise?: T;
@@ -1527,6 +1972,7 @@ export interface OrderItemsSelect<T extends boolean = true> {
   productNameSnapshot?: T;
   sizeSnapshot?: T;
   colorSnapshot?: T;
+  descriptionSnapshot?: T;
   imageUrlSnapshot?: T;
   quantity?: T;
   unitPricePaise?: T;
@@ -1621,6 +2067,34 @@ export interface CouponRedemptionsSelect<T extends boolean = true> {
   allocatedAt?: T;
   redeemedAt?: T;
   releasedAt?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "search-synonyms_select".
+ */
+export interface SearchSynonymsSelect<T extends boolean = true> {
+  label?: T;
+  terms?:
+    | T
+    | {
+        term?: T;
+        id?: T;
+      };
+  isActive?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "search-queries_select".
+ */
+export interface SearchQueriesSelect<T extends boolean = true> {
+  query?: T;
+  normalizedQuery?: T;
+  resultCount?: T;
+  relaxed?: T;
   updatedAt?: T;
   createdAt?: T;
 }

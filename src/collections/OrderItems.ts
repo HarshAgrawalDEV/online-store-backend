@@ -24,6 +24,12 @@ export const OrderItems: CollectionConfig = {
     { name: 'productNameSnapshot', type: 'text', required: true, maxLength: 180 },
     { name: 'sizeSnapshot', type: 'text', maxLength: 60 },
     { name: 'colorSnapshot', type: 'text', maxLength: 60 },
+    {
+      name: 'descriptionSnapshot',
+      type: 'text',
+      maxLength: 300,
+      admin: { description: 'What was bought, as shown on packing paperwork.' },
+    },
     { name: 'imageUrlSnapshot', type: 'text', maxLength: 500 },
     { name: 'quantity', type: 'number', required: true, validate: validateRequiredPositiveInteger },
     {

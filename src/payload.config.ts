@@ -6,11 +6,10 @@ import { fileURLToPath } from 'url'
 import sharp from 'sharp'
 
 import { Admins } from './collections/Admins'
-import { CatalogAttributeDefinitions } from './collections/CatalogAttributeDefinitions'
-import { CatalogAttributeOptions } from './collections/CatalogAttributeOptions'
 import { CartItems } from './collections/CartItems'
 import { Carts } from './collections/Carts'
 import { Categories } from './collections/Categories'
+import { Colours } from './collections/Colours'
 import { Coupons } from './collections/Coupons'
 import { CouponRedemptions } from './collections/CouponRedemptions'
 import { CuratedCollections } from './collections/CuratedCollections'
@@ -19,13 +18,20 @@ import { Customers } from './collections/Customers'
 import { Inventory } from './collections/Inventory'
 import { InventoryMovements } from './collections/InventoryMovements'
 import { InventoryReservations } from './collections/InventoryReservations'
+import { Materials } from './collections/Materials'
 import { Media } from './collections/Media'
+import { Finishes, JewelleryStyles, PieceTypes, StoneTypes } from './collections/JewelleryLibraries'
+import { Occasions } from './collections/Occasions'
 import { OrderItems } from './collections/OrderItems'
 import { Orders } from './collections/Orders'
 import { OrderStatusEvents } from './collections/OrderStatusEvents'
 import { PaymentAttempts } from './collections/PaymentAttempts'
 import { PaymentWebhookEvents } from './collections/PaymentWebhookEvents'
 import { Promotions } from './collections/Promotions'
+import { SearchQueries } from './collections/SearchQueries'
+import { SearchSynonyms } from './collections/SearchSynonyms'
+import { StockAlerts } from './collections/StockAlerts'
+import { Sizes } from './collections/Sizes'
 import { Products } from './collections/Products'
 import { ProductVariants } from './collections/ProductVariants'
 import { WishlistItems } from './collections/WishlistItems'
@@ -36,11 +42,15 @@ import { cartEndpoints } from './endpoints/cart'
 import { commerceEndpoints } from './endpoints/commerce'
 import { customerAuthEndpoints } from './endpoints/customer-auth'
 import { healthEndpoint } from './endpoints/health'
+import { productAdminEndpoints } from './endpoints/product-admin'
+import { stockAlertEndpoints } from './endpoints/stock-alerts'
 import { inventoryAdjustmentEndpoint } from './endpoints/inventory'
 import { wishlistEndpoints } from './endpoints/wishlist'
 import { ShippingSettings } from './globals/ShippingSettings'
+import { withSearchIndexHooks } from './hooks/search-index'
 import { startMaintenanceLoop } from './jobs/maintenance'
 import { withRateLimit } from './lib/rate-limit'
+import { ensureSearchIndex } from './services/search/indexer'
 
 const filename = fileURLToPath(import.meta.url)
 const dirname = path.dirname(filename)
@@ -57,8 +67,15 @@ export default buildConfig({
     Media,
     Categories,
     CuratedCollections,
-    CatalogAttributeDefinitions,
-    CatalogAttributeOptions,
+    Materials,
+    Sizes,
+    Colours,
+    Occasions,
+    PieceTypes,
+    JewelleryStyles,
+    Finishes,
+    StoneTypes,
+    StockAlerts,
     Products,
     ProductVariants,
     Inventory,
@@ -78,16 +95,20 @@ export default buildConfig({
     PaymentAttempts,
     PaymentWebhookEvents,
     CouponRedemptions,
-  ],
+    SearchSynonyms,
+    SearchQueries,
+  ].map(withSearchIndexHooks),
   globals: [ShippingSettings],
   editor: lexicalEditor(),
   endpoints: [
     healthEndpoint,
     ...catalogEndpoints,
     inventoryAdjustmentEndpoint,
+    ...productAdminEndpoints,
     ...customerAuthEndpoints,
     ...addressEndpoints,
     ...wishlistEndpoints,
+    ...stockAlertEndpoints,
     ...cartEndpoints,
     ...commerceEndpoints,
   ].map(withRateLimit),
@@ -96,6 +117,7 @@ export default buildConfig({
   graphQL: { disable: true },
   onInit: async (payload) => {
     startMaintenanceLoop(payload)
+    void ensureSearchIndex(payload)
   },
   secret: process.env.PAYLOAD_SECRET || '',
   serverURL: process.env.NEXT_PUBLIC_SERVER_URL || 'http://localhost:3000',
